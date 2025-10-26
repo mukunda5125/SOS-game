@@ -1,66 +1,87 @@
-<html>
-<head>
-<title>GameController.java</title>
-<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-<style type="text/css">
-.s0 { color: #cf8e6d;}
-.s1 { color: #bcbec4;}
-.s2 { color: #bcbec4;}
-</style>
-</head>
-<body bgcolor="#1e1f22">
-<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
-<tr><td><center>
-<font face="Arial, Helvetica" color="#000000">
-GameController.java</font>
-</center></td></tr></table>
-<pre><span class="s0">package </span><span class="s1">com</span><span class="s2">.</span><span class="s1">sosgame</span><span class="s2">.</span><span class="s1">controller</span><span class="s2">;</span>
+package com.sosgame.controller;
 
-<span class="s0">import </span><span class="s1">com</span><span class="s2">.</span><span class="s1">sosgame</span><span class="s2">.</span><span class="s1">model</span><span class="s2">.*;</span>
-<span class="s0">import </span><span class="s1">com</span><span class="s2">.</span><span class="s1">sosgame</span><span class="s2">.</span><span class="s1">view</span><span class="s2">.</span><span class="s1">SOSGameGUI</span><span class="s2">;</span>
+import com.sosgame.model.Board;
+import com.sosgame.model.GameMode;
+import com.sosgame.model.GeneralGame;
+import com.sosgame.model.Player;
+import com.sosgame.model.SimpleGame;
+import com.sosgame.model.SOSGameBase;
 
-<span class="s0">public class </span><span class="s1">GameController </span><span class="s2">{</span>
-    <span class="s0">private </span><span class="s1">SOSGame game</span><span class="s2">;</span>
-    <span class="s0">private </span><span class="s1">SOSGameGUI gui</span><span class="s2">;</span>
+public class GameController {
 
-    <span class="s0">public </span><span class="s1">GameController</span><span class="s2">(</span><span class="s1">SOSGameGUI gui</span><span class="s2">) {</span>
-        <span class="s0">this</span><span class="s2">.</span><span class="s1">gui </span><span class="s2">= </span><span class="s1">gui</span><span class="s2">;</span>
-        <span class="s0">this</span><span class="s2">.</span><span class="s1">game </span><span class="s2">= </span><span class="s0">new </span><span class="s1">SOSGame</span><span class="s2">();</span>
-    <span class="s2">}</span>
+    private SOSGameBase game;
+    private GameMode mode;
 
-    <span class="s0">public void </span><span class="s1">handleCellClick</span><span class="s2">(</span><span class="s0">int </span><span class="s1">row</span><span class="s2">, </span><span class="s0">int </span><span class="s1">col</span><span class="s2">) {</span>
-        <span class="s1">Player currentPlayer </span><span class="s2">= </span><span class="s1">game</span><span class="s2">.</span><span class="s1">getCurrentPlayer</span><span class="s2">();</span>
-        <span class="s0">char </span><span class="s1">selectedLetter </span><span class="s2">= </span><span class="s1">gui</span><span class="s2">.</span><span class="s1">getSelectedLetter</span><span class="s2">(</span><span class="s1">currentPlayer</span><span class="s2">);</span>
+    public void startNewGame(int size, GameMode mode) {
+        this.mode = mode;
 
-        <span class="s0">boolean </span><span class="s1">success </span><span class="s2">= </span><span class="s1">game</span><span class="s2">.</span><span class="s1">makeMove</span><span class="s2">(</span><span class="s1">row</span><span class="s2">, </span><span class="s1">col</span><span class="s2">, </span><span class="s1">selectedLetter</span><span class="s2">);</span>
+        if (mode == GameMode.SIMPLE) {
+            game = new SimpleGame(size);
+        } else {
+            game = new GeneralGame(size);
+        }
+    }
 
-        <span class="s0">if </span><span class="s2">(</span><span class="s1">success</span><span class="s2">) {</span>
-            <span class="s1">gui</span><span class="s2">.</span><span class="s1">updateCell</span><span class="s2">(</span><span class="s1">row</span><span class="s2">, </span><span class="s1">col</span><span class="s2">, </span><span class="s1">selectedLetter</span><span class="s2">, </span><span class="s1">currentPlayer</span><span class="s2">);</span>
-            <span class="s1">gui</span><span class="s2">.</span><span class="s1">updateTurnDisplay</span><span class="s2">(</span><span class="s1">game</span><span class="s2">.</span><span class="s1">getCurrentPlayer</span><span class="s2">());</span>
-        <span class="s2">}</span>
-    <span class="s2">}</span>
+    public void handleCellClick(int row, int col, char letter) {
+        if (game == null) return;
+        if (game.isGameOver()) return;
+        game.makeMove(row, col, letter);
+    }
 
-    <span class="s0">public void </span><span class="s1">startNewGame</span><span class="s2">() {</span>
-        <span class="s0">int </span><span class="s1">size </span><span class="s2">= </span><span class="s1">gui</span><span class="s2">.</span><span class="s1">getBoardSizeFromSpinner</span><span class="s2">();</span>
-        <span class="s1">GameMode mode </span><span class="s2">= </span><span class="s1">gui</span><span class="s2">.</span><span class="s1">getSelectedGameMode</span><span class="s2">();</span>
+    // used by GUI to build the board
+    public int getBoardSize() {
+        return game.getBoard().getSize();
+    }
 
-        <span class="s1">game</span><span class="s2">.</span><span class="s1">startNewGame</span><span class="s2">(</span><span class="s1">size</span><span class="s2">, </span><span class="s1">mode</span><span class="s2">);</span>
-        <span class="s1">gui</span><span class="s2">.</span><span class="s1">createBoard</span><span class="s2">(</span><span class="s1">size</span><span class="s2">);</span>
-        <span class="s1">gui</span><span class="s2">.</span><span class="s1">resetBoardDisplay</span><span class="s2">();</span>
-        <span class="s1">gui</span><span class="s2">.</span><span class="s1">updateTurnDisplay</span><span class="s2">(</span><span class="s1">game</span><span class="s2">.</span><span class="s1">getCurrentPlayer</span><span class="s2">());</span>
-    <span class="s2">}</span>
+    // used by GUI to paint X/Y text on each cell
+    public char getCellValue(int row, int col) {
+        return game.getBoard().getCell(row, col);
+    }
 
-    <span class="s0">public void </span><span class="s1">setBoardSize</span><span class="s2">(</span><span class="s0">int </span><span class="s1">size</span><span class="s2">) {</span>
-        <span class="s1">game</span><span class="s2">.</span><span class="s1">setBoardSize</span><span class="s2">(</span><span class="s1">size</span><span class="s2">);</span>
-    <span class="s2">}</span>
+    public Player getCurrentPlayer() {
+        return game.getCurrentPlayer();
+    }
 
-    <span class="s0">public void </span><span class="s1">setGameMode</span><span class="s2">(</span><span class="s1">GameMode mode</span><span class="s2">) {</span>
-        <span class="s1">game</span><span class="s2">.</span><span class="s1">setGameMode</span><span class="s2">(</span><span class="s1">mode</span><span class="s2">);</span>
-    <span class="s2">}</span>
+    public boolean isGameOver() {
+        return game.isGameOver();
+    }
 
-    <span class="s0">public </span><span class="s1">SOSGame getGame</span><span class="s2">() {</span>
-        <span class="s0">return </span><span class="s1">game</span><span class="s2">;</span>
-    <span class="s2">}</span>
-<span class="s2">}</span></pre>
-</body>
-</html>
+    public boolean isGeneralMode() {
+        return mode == GameMode.GENERAL;
+    }
+
+    public int getBlueScore() {
+        if (mode == GameMode.GENERAL) {
+            return ((GeneralGame) game).getBlueScore();
+        }
+        return 0;
+    }
+
+    public int getRedScore() {
+        if (mode == GameMode.GENERAL) {
+            return ((GeneralGame) game).getRedScore();
+        }
+        return 0;
+    }
+
+    public String getWinnerText() {
+        if (!game.isGameOver()) return "";
+
+        if (mode == GameMode.SIMPLE) {
+            SimpleGame sg = (SimpleGame) game;
+            Player w = sg.getWinner();
+            return winnerToText(w);
+        } else {
+            GeneralGame gg = (GeneralGame) game;
+            Player w = gg.getWinner();
+            return winnerToText(w);
+        }
+    }
+
+    private String winnerToText(Player w) {
+        if (w == null) {
+            return "Draw";
+        }
+        return w.getName() + " wins";
+    }
+}
