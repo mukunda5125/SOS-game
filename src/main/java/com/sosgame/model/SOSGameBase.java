@@ -1,5 +1,8 @@
 package com.sosgame.model;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Shared functionality:
  * - board state
@@ -65,7 +68,15 @@ public abstract class SOSGameBase {
      *   - the last cell.
      */
     protected int countSOSFormedByMove(int row, int col) {
-        int count = 0;
+        return getSOSSequencesFormedByMove(row, col).size();
+    }
+
+    /**
+     * Returns a list of SOS sequences formed by the move at (row, col).
+     * Each sequence contains the three coordinates and the player who made it.
+     */
+    protected List<SOSSequence> getSOSSequencesFormedByMove(int row, int col) {
+        List<SOSSequence> sequences = new ArrayList<>();
 
         int[][] dirs = new int[][]{
             {1, 0},   // vertical
@@ -79,36 +90,73 @@ public abstract class SOSGameBase {
             int dc = d[1];
 
             // Check triplet centered at (row,col):
-            count += checkTriplet(row - dr, col - dc,
-                                  row,     col,
-                                  row + dr, col + dc);
+            if (checkTriplet(row - dr, col - dc, row, col, row + dr, col + dc)) {
+                sequences.add(new SOSSequence(row - dr, col - dc, row, col, row + dr, col + dc, currentPlayer));
+            }
 
             // Check triplet starting at (row,col):
-            count += checkTriplet(row,      col,
-                                  row + dr, col + dc,
-                                  row + 2*dr, col + 2*dc);
+            if (checkTriplet(row, col, row + dr, col + dc, row + 2*dr, col + 2*dc)) {
+                sequences.add(new SOSSequence(row, col, row + dr, col + dc, row + 2*dr, col + 2*dc, currentPlayer));
+            }
 
             // Check triplet ending at (row,col):
-            count += checkTriplet(row - 2*dr, col - 2*dc,
-                                  row - dr,   col - dc,
-                                  row,        col);
+            if (checkTriplet(row - 2*dr, col - 2*dc, row - dr, col - dc, row, col)) {
+                sequences.add(new SOSSequence(row - 2*dr, col - 2*dc, row - dr, col - dc, row, col, currentPlayer));
+            }
         }
 
-        return count;
+        return sequences;
     }
 
     /**
-     * Return 1 if (r1,c1),(r2,c2),(r3,c3) is exactly S,O,S and in bounds.
-     * Else return 0.
+     * Return true if (r1,c1),(r2,c2),(r3,c3) is exactly S,O,S and in bounds.
+     * Else return false.
      */
-    private int checkTriplet(int r1,int c1,int r2,int c2,int r3,int c3){
+    private boolean checkTriplet(int r1,int c1,int r2,int c2,int r3,int c3){
         if (!board.inBounds(r1,c1) || !board.inBounds(r2,c2) || !board.inBounds(r3,c3)) {
-            return 0;
+            return false;
         }
         char a = board.getCell(r1,c1);
         char b = board.getCell(r2,c2);
         char c = board.getCell(r3,c3);
-        return (a=='S' && b=='O' && c=='S') ? 1 : 0;
+        return (a=='S' && b=='O' && c=='S');
+    }
+
+    /**
+     * Get all SOS sequences that have been formed in the game.
+     * This is used by the GUI to draw highlight lines.
+     */
+    public List<SOSSequence> getAllSOSSequences() {
+        List<SOSSequence> allSequences = new ArrayList<>();
+        
+        // Check all possible SOS patterns on the current board
+        for (int r = 0; r < board.getSize(); r++) {
+            for (int c = 0; c < board.getSize(); c++) {
+                if (board.getCell(r, c) == 'S') {
+                    // Check all directions from this S
+                    int[][] dirs = new int[][]{
+                        {1, 0},   // vertical
+                        {0, 1},   // horizontal
+                        {1, 1},   // diag down-right
+                        {1,-1}    // diag down-left
+                    };
+                    
+                    for (int[] d : dirs) {
+                        int dr = d[0];
+                        int dc = d[1];
+                        
+                        // Check if this S is the start of an SOS
+                        if (checkTriplet(r, c, r + dr, c + dc, r + 2*dr, c + 2*dc)) {
+                            // Find which player made this SOS by checking the board state
+                            // We'll need to determine the player based on the game state
+                            allSequences.add(new SOSSequence(r, c, r + dr, c + dc, r + 2*dr, c + 2*dc, Player.BLUE));
+                        }
+                    }
+                }
+            }
+        }
+        
+        return allSequences;
     }
 
     /**

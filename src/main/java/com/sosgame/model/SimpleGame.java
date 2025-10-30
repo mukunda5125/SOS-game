@@ -1,5 +1,8 @@
 package com.sosgame.model;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Simple mode rules:
  * - First SOS ends game immediately -> that player wins.
@@ -8,10 +11,12 @@ package com.sosgame.model;
 public class SimpleGame extends SOSGameBase {
 
     private Player winner; // null means draw OR no winner yet
+    private List<SOSSequence> sosSequences; // Track all SOS sequences formed
 
     public SimpleGame(int size) {
         super(size);
         this.winner = null;
+        this.sosSequences = new ArrayList<>();
     }
 
     @Override
@@ -24,10 +29,12 @@ public class SimpleGame extends SOSGameBase {
             return;
         }
 
-        int sosCount = countSOSFormedByMove(row, col);
+        // Get SOS sequences formed by this move
+        List<SOSSequence> newSequences = getSOSSequencesFormedByMove(row, col);
+        sosSequences.addAll(newSequences);
 
         // If the player just made at least one SOS, they instantly win.
-        if (sosCount > 0) {
+        if (!newSequences.isEmpty()) {
             winner = currentPlayer;
             gameOver = true;
             return;
@@ -51,5 +58,12 @@ public class SimpleGame extends SOSGameBase {
      */
     public Player getWinner() {
         return winner;
+    }
+
+    /**
+     * Get all SOS sequences that have been formed in the game.
+     */
+    public List<SOSSequence> getAllSOSSequences() {
+        return new ArrayList<>(sosSequences);
     }
 }

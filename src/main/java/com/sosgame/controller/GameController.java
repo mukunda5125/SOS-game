@@ -1,16 +1,20 @@
 package com.sosgame.controller;
 
-import com.sosgame.model.Board;
 import com.sosgame.model.GameMode;
 import com.sosgame.model.GeneralGame;
 import com.sosgame.model.Player;
 import com.sosgame.model.SimpleGame;
 import com.sosgame.model.SOSGameBase;
+import com.sosgame.model.SOSSequence;
+
+import java.util.List;
 
 public class GameController {
 
     private SOSGameBase game;
     private GameMode mode;
+    private final char blueLetter = 'S';
+    private final char redLetter  = 'O';
 
     public void startNewGame(int size, GameMode mode) {
         this.mode = mode;
@@ -22,10 +26,25 @@ public class GameController {
         }
     }
 
-    public void handleCellClick(int row, int col, char letter) {
-        if (game == null) return;
-        if (game.isGameOver()) return;
+    private char letterFor(com.sosgame.model.Player p) {
+        return (p == com.sosgame.model.Player.BLUE) ? blueLetter : redLetter;
+    }
+
+    /**
+     * Attempt a move. Enforces per-player fixed letter.
+     * Returns true if move accepted; false if rejected (no state change).
+     */
+    public boolean tryMove(int row, int col, char letter) {
+        if (game == null) return false;
+        if (game.isGameOver()) return false;
+
+        char required = letterFor(getCurrentPlayer());
+        if (letter != required) {
+            return false; // reject wrong letter; keep state unchanged
+        }
+
         game.makeMove(row, col, letter);
+        return true;
     }
 
     // used by GUI to build the board
@@ -83,5 +102,35 @@ public class GameController {
             return "Draw";
         }
         return w.getName() + " wins";
+    }
+
+    /**
+     * Get all SOS sequences that have been formed in the current game.
+     * Used by the GUI to draw highlight lines.
+     */
+    public List<SOSSequence> getAllSOSSequences() {
+        if (game == null) return List.of();
+        
+        if (mode == GameMode.SIMPLE) {
+            return ((SimpleGame) game).getAllSOSSequences();
+        } else {
+            return ((GeneralGame) game).getAllSOSSequences();
+        }
+    }
+
+    public char getRequiredLetterForCurrentPlayer() {
+        return letterFor(getCurrentPlayer());
+    }
+
+    /** Convenience method for tests/UI: snapshot of the board. */
+    public char[][] getBoardAsCharMatrix() {
+        int size = getBoardSize();
+        char[][] m = new char[size][size];
+        for (int r = 0; r < size; r++) {
+            for (int c = 0; c < size; c++) {
+                m[r][c] = getCellValue(r, c);
+            }
+        }
+        return m;
     }
 }

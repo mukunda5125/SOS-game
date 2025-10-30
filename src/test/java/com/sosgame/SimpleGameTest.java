@@ -84,4 +84,26 @@ public class SimpleGameTest {
             assertFalse(game.isBoardFull());
         }
     }
+
+    @Test
+    public void testWrongLetterIsRejectedAndTurnUnchanged() {
+        com.sosgame.controller.GameController c = new com.sosgame.controller.GameController();
+        c.startNewGame(3, com.sosgame.model.GameMode.SIMPLE); // BLUE starts, must place 'S'
+        char required = c.getRequiredLetterForCurrentPlayer();
+        assertEquals('S', required);
+
+        // Try to play 'O' on BLUE's turn — should be rejected
+        boolean ok = c.tryMove(0, 0, 'O');
+        assertFalse(ok);
+        // Board remains empty, turn remains BLUE
+        assertEquals(com.sosgame.model.Player.BLUE, c.getCurrentPlayer());
+        assertEquals('\0', c.getBoardAsCharMatrix()[0][0]);
+
+        // Now play the correct letter
+        ok = c.tryMove(0, 0, 'S');
+        assertTrue(ok);
+        assertEquals('S', c.getBoardAsCharMatrix()[0][0]);
+        // Turn advances to RED
+        assertEquals(com.sosgame.model.Player.RED, c.getCurrentPlayer());
+    }
 }

@@ -1,5 +1,8 @@
 package com.sosgame.model;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * General mode rules:
  * - Every SOS formed this turn gives 1 point.
@@ -13,12 +16,14 @@ public class GeneralGame extends SOSGameBase {
     private int blueScore;
     private int redScore;
     private Player winner; // null means draw or not decided yet
+    private List<SOSSequence> sosSequences; // Track all SOS sequences formed
 
     public GeneralGame(int size) {
         super(size);
         this.blueScore = 0;
         this.redScore = 0;
         this.winner = null;
+        this.sosSequences = new ArrayList<>();
     }
 
     @Override
@@ -31,14 +36,16 @@ public class GeneralGame extends SOSGameBase {
             return;
         }
 
-        int sosCount = countSOSFormedByMove(row, col);
+        // Get SOS sequences formed by this move
+        List<SOSSequence> newSequences = getSOSSequencesFormedByMove(row, col);
+        sosSequences.addAll(newSequences);
 
-        if (sosCount > 0) {
+        if (!newSequences.isEmpty()) {
             // award points to whoever is currentPlayer
             if (currentPlayer == Player.BLUE) {
-                blueScore += sosCount;
+                blueScore += newSequences.size();
             } else {
-                redScore += sosCount;
+                redScore += newSequences.size();
             }
             // IMPORTANT: same player keeps turn if they scored
         } else {
@@ -74,5 +81,12 @@ public class GeneralGame extends SOSGameBase {
      */
     public Player getWinner() {
         return winner;
+    }
+
+    /**
+     * Get all SOS sequences that have been formed in the game.
+     */
+    public List<SOSSequence> getAllSOSSequences() {
+        return new ArrayList<>(sosSequences);
     }
 }

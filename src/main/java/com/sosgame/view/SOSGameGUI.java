@@ -3,19 +3,20 @@ package com.sosgame.view;
 import com.sosgame.controller.GameController;
 import com.sosgame.model.GameMode;
 import com.sosgame.model.Player;
+import com.sosgame.model.SOSSequence;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionListener;
+import java.util.List;
 
 /**
- * Minimal Sprint 3 GUI.
+ * Enhanced Sprint 3 GUI with SOS highlighting.
  */
 public class SOSGameGUI extends JFrame {
 
     private final GameController controller = new GameController();
 
-    private JPanel boardPanel;
+    private BoardPanel boardPanel;
     private JLabel turnLabel;
     private JLabel scoreLabel;
     private JLabel statusLabel;
@@ -26,7 +27,7 @@ public class SOSGameGUI extends JFrame {
     private JRadioButton placeSBtn;
     private JRadioButton placeOBtn;
 
-    private JButton[][] cellButtons;
+    // no per-cell buttons; BoardPanel handles drawing and clicks
 
     public SOSGameGUI() {
         super("SOS Game - Sprint 3");
@@ -38,9 +39,17 @@ public class SOSGameGUI extends JFrame {
         add(buildBoardPanel(), BorderLayout.CENTER);
         add(buildBottomPanel(), BorderLayout.SOUTH);
 
+        // Start a default game so the grid and letters can render immediately
+        int initialSize = 3;
+        sizeSpinner.setValue(initialSize);
+        controller.startNewGame(initialSize, GameMode.SIMPLE);
+        rebuildBoard();
+        refreshUI();
+
         pack();
         setLocationRelativeTo(null);
         setVisible(true);
+        boardPanel.repaint();
     }
 
     private JPanel buildTopPanel() {
@@ -99,56 +108,29 @@ public class SOSGameGUI extends JFrame {
     }
 
     private JPanel buildBoardPanel() {
-        // placeholder board until "New Game"
-        boardPanel = new JPanel(new GridLayout(3,3));
-        cellButtons = new JButton[3][3];
+        boardPanel = new BoardPanel(controller);
+        // BoardPanel will always use controller's required letter for safety
+        boardPanel.setOnStateChanged(this::refreshUI);
         return boardPanel;
     }
 
     private JPanel buildBottomPanel() {
         JPanel bottom = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        bottom.add(new JLabel("Sprint 3 Demo UI"));
+        bottom.add(new JLabel("Sprint 3 Demo UI - Click cells to place S or O"));
         return bottom;
     }
+
+    // Board drawing logic moved into standalone BoardPanel class
 
     /**
      * Build the clickable grid based on the game size from controller.
      * Call this every time we start a new game.
      */
     private void rebuildBoard() {
-        int size = controller.getBoardSize();
-
-        boardPanel.removeAll();
-        boardPanel.setLayout(new GridLayout(size, size));
-        cellButtons = new JButton[size][size];
-
-        for (int r = 0; r < size; r++) {
-            for (int c = 0; c < size; c++) {
-                final int row = r;
-                final int col = c;
-
-                JButton btn = new JButton("");
-                btn.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 24));
-
-                ActionListener clickAction = e -> {
-                    if (controller.isGameOver()) return;
-
-                    char letter = placeSBtn.isSelected() ? 'S' : 'O';
-                    controller.handleCellClick(row, col, letter);
-
-                    refreshUI();
-                };
-
-                btn.addActionListener(clickAction);
-
-                cellButtons[r][c] = btn;
-                boardPanel.add(btn);
-            }
-        }
-
-        boardPanel.revalidate();
-        boardPanel.repaint();
+        // board size used implicitly for painting; no per-cell widgets to update here
+        boardPanel.setBoardSize(controller.getBoardSize());
         pack();
+        boardPanel.repaint();
     }
 
     /**
@@ -156,24 +138,14 @@ public class SOSGameGUI extends JFrame {
      * Call this after any move.
      */
     private void refreshUI() {
-        int size = controller.getBoardSize();
-
-        // update each cell button
-        for (int r = 0; r < size; r++) {
-            for (int c = 0; c < size; c++) {
-                char val = controller.getCellValue(r, c);
-                String text = (val == '\0') ? "" : Character.toString(val);
-                cellButtons[r][c].setText(text);
-
-                if (controller.isGameOver()) {
-                    cellButtons[r][c].setEnabled(false);
-                }
-            }
-        }
-
-        // turn label
+        // turn label and required letter locking
         Player p = controller.getCurrentPlayer();
+        char required = controller.getRequiredLetterForCurrentPlayer();
         turnLabel.setText("Turn: " + (p == null ? "-" : p.getName()));
+        placeSBtn.setSelected(required == 'S');
+        placeOBtn.setSelected(required == 'O');
+        placeSBtn.setEnabled(required == 'S');
+        placeOBtn.setEnabled(required == 'O');
 
         // score label
         if (controller.isGeneralMode()) {
@@ -187,10 +159,20 @@ public class SOSGameGUI extends JFrame {
         if (controller.isGameOver()) {
             statusLabel.setText("Status: " + controller.getWinnerText());
         } else {
-            statusLabel.setText("Status: in progress");
+            statusLabel.setText("Turn: " + (p == null ? "-" : p.getName()) + " — must place " + required);
         }
 
-        pack();
+        // Build highlight lines and send to BoardPanel
+        List<SOSSequence> sequences = controller.getAllSOSSequences();
+        java.util.ArrayList<BoardPanel.HighlightLine> lines = new java.util.ArrayList<>();
+        if (sequences != null) {
+            for (SOSSequence seq : sequences) {
+                Color color = (seq.getPlayer() == Player.BLUE) ? Color.BLUE : Color.RED;
+                lines.add(new BoardPanel.HighlightLine(seq.getRow1(), seq.getCol1(), seq.getRow3(), seq.getCol3(), color));
+            }
+        }
+        boardPanel.setHighlightLines(lines);
+        boardPanel.repaint();
     }
 
     public static void main(String[] args) {
