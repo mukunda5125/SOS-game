@@ -19,3 +19,4 @@ public class Cell {
         this.value = Character.toUpperCase(v);
     }
 }
+

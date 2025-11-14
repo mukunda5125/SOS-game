@@ -6,9 +6,9 @@ package com.sosgame.model;
  */
 public class SOSSequence {
     private final int row1, col1, row2, col2, row3, col3;
-    private final Player player;
+    private final PlayerColor player;
     
-    public SOSSequence(int row1, int col1, int row2, int col2, int row3, int col3, Player player) {
+    public SOSSequence(int row1, int col1, int row2, int col2, int row3, int col3, PlayerColor player) {
         this.row1 = row1;
         this.col1 = col1;
         this.row2 = row2;
@@ -24,5 +24,5 @@ public class SOSSequence {
     public int getCol2() { return col2; }
     public int getRow3() { return row3; }
     public int getCol3() { return col3; }
-    public Player getPlayer() { return player; }
+    public PlayerColor getPlayer() { return player; }
 }

@@ -16,12 +16,12 @@ import java.util.List;
 public abstract class SOSGameBase {
 
     protected final Board board;
-    protected Player currentPlayer;
+    protected PlayerColor currentPlayer;
     protected boolean gameOver;
 
     public SOSGameBase(int size) {
         this.board = new Board(size);
-        this.currentPlayer = Player.BLUE; // Blue starts
+        this.currentPlayer = PlayerColor.BLUE; // Blue starts
         this.gameOver = false;
     }
 
@@ -29,7 +29,7 @@ public abstract class SOSGameBase {
         return board;
     }
 
-    public Player getCurrentPlayer() {
+    public PlayerColor getCurrentPlayer() {
         return currentPlayer;
     }
 
@@ -149,7 +149,7 @@ public abstract class SOSGameBase {
                         if (checkTriplet(r, c, r + dr, c + dc, r + 2*dr, c + 2*dc)) {
                             // Find which player made this SOS by checking the board state
                             // We'll need to determine the player based on the game state
-                            allSequences.add(new SOSSequence(r, c, r + dr, c + dc, r + 2*dr, c + 2*dc, Player.BLUE));
+                            allSequences.add(new SOSSequence(r, c, r + dr, c + dc, r + 2*dr, c + 2*dc, PlayerColor.BLUE));
                         }
                     }
                 }

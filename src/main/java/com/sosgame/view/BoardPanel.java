@@ -1,6 +1,8 @@
 package com.sosgame.view;
 
 import com.sosgame.controller.GameController;
+import com.sosgame.model.HumanPlayer;
+import com.sosgame.model.Player;
 
 import javax.swing.*;
 import java.awt.*;
@@ -37,6 +39,9 @@ public class BoardPanel extends JPanel {
 
     // Callback to notify outer UI to refresh labels/status after a click
     private Runnable onStateChanged;
+    
+    // Callback to get the selected letter from GUI controls (S or O)
+    private java.util.function.Supplier<Character> getSelectedLetter;
 
     public BoardPanel(GameController controller) {
         this.controller = controller;
@@ -61,6 +66,14 @@ public class BoardPanel extends JPanel {
 
     public void setOnStateChanged(Runnable onStateChanged) {
         this.onStateChanged = onStateChanged;
+    }
+    
+    /**
+     * Set a callback to get the selected letter (S or O) from GUI controls.
+     * @param getSelectedLetter Supplier that returns the selected letter ('S' or 'O')
+     */
+    public void setGetSelectedLetter(java.util.function.Supplier<Character> getSelectedLetter) {
+        this.getSelectedLetter = getSelectedLetter;
     }
 
     /** Replace all highlight lines and repaint. */
@@ -142,6 +155,13 @@ public class BoardPanel extends JPanel {
         if (controller.isGameOver()) return;
         if (boardSize <= 0) return;
 
+        // Check if currentPlayer is a HumanPlayer
+        Player currentPlayer = controller.getCurrentPlayerObject();
+        if (currentPlayer == null || !(currentPlayer instanceof HumanPlayer)) {
+            // If currentPlayer is NOT a HumanPlayer (i.e., it's ComputerPlayer), do nothing on click
+            return;
+        }
+
         int w = getWidth();
         int h = getHeight();
         int cellW = w / boardSize;
@@ -152,12 +172,26 @@ public class BoardPanel extends JPanel {
 
         if (row < 0 || row >= boardSize || col < 0 || col >= boardSize) return;
 
-        // Always use controller's required letter; UI is locked accordingly
-        char letter = controller.getRequiredLetterForCurrentPlayer();
+        // Get the selected letter S or O for that player from the GUI controls
+        char letter;
+        if (getSelectedLetter != null) {
+            letter = getSelectedLetter.get();
+        } else {
+            // Fallback: use controller's required letter if callback not set
+            letter = controller.getRequiredLetterForCurrentPlayer();
+        }
+
+        // Call the game controller to place the letter at that row, col
+        // The game controller will:
+        // - validate the move
+        // - update the board and GUI
+        // - check for SOS / winner
+        // - switch currentPlayer
+        // - trigger computer moves if the next player is ComputerPlayer
         boolean ok = controller.tryMove(row, col, letter);
         if (!ok) {
             javax.swing.JOptionPane.showMessageDialog(this,
-                "It's " + (controller.getCurrentPlayer() == null ? "-" : controller.getCurrentPlayer().getName()) +
+                "Invalid move. It's " + (controller.getCurrentPlayer() == null ? "-" : controller.getCurrentPlayer().getName()) +
                 "'s turn. Required letter: " + controller.getRequiredLetterForCurrentPlayer());
         }
 

@@ -10,7 +10,7 @@ import java.util.List;
  */
 public class SimpleGame extends SOSGameBase {
 
-    private Player winner; // null means draw OR no winner yet
+    private PlayerColor winner; // null means draw OR no winner yet
     private List<SOSSequence> sosSequences; // Track all SOS sequences formed
 
     public SimpleGame(int size) {
@@ -56,7 +56,7 @@ public class SimpleGame extends SOSGameBase {
      *  - BLUE or RED if someone won
      *  - null if draw OR game not finished yet
      */
-    public Player getWinner() {
+    public PlayerColor getWinner() {
         return winner;
     }
 

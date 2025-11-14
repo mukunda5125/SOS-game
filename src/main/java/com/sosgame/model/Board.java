@@ -61,3 +61,4 @@ public class Board {
         return up == 'S' || up == 'O';
     }
 }
+

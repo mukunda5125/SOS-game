@@ -15,7 +15,7 @@ public class GeneralGame extends SOSGameBase {
 
     private int blueScore;
     private int redScore;
-    private Player winner; // null means draw or not decided yet
+    private PlayerColor winner; // null means draw or not decided yet
     private List<SOSSequence> sosSequences; // Track all SOS sequences formed
 
     public GeneralGame(int size) {
@@ -42,7 +42,7 @@ public class GeneralGame extends SOSGameBase {
 
         if (!newSequences.isEmpty()) {
             // award points to whoever is currentPlayer
-            if (currentPlayer == Player.BLUE) {
+            if (currentPlayer == PlayerColor.BLUE) {
                 blueScore += newSequences.size();
             } else {
                 redScore += newSequences.size();
@@ -57,9 +57,9 @@ public class GeneralGame extends SOSGameBase {
         if (isBoardFull()) {
             gameOver = true;
             if (blueScore > redScore) {
-                winner = Player.BLUE;
+                winner = PlayerColor.BLUE;
             } else if (redScore > blueScore) {
-                winner = Player.RED;
+                winner = PlayerColor.RED;
             } else {
                 winner = null; // draw
             }
@@ -79,7 +79,7 @@ public class GeneralGame extends SOSGameBase {
      *  - BLUE / RED if that player wins at end of game
      *  - null if draw or not done yet
      */
-    public Player getWinner() {
+    public PlayerColor getWinner() {
         return winner;
     }
 
