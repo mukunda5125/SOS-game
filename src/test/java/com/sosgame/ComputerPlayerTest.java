@@ -1,13 +1,17 @@
 package com.sosgame;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import org.junit.Before;
+import org.junit.Test;
+
 import com.sosgame.controller.GameController;
 import com.sosgame.model.ComputerPlayer;
 import com.sosgame.model.GameMode;
 import com.sosgame.model.HumanPlayer;
 import com.sosgame.model.Player;
-import org.junit.Before;
-import org.junit.Test;
-import static org.junit.Assert.*;
 
 /**
  * JUnit tests for ComputerPlayer and game logic.

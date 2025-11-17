@@ -1,0 +1,14 @@
+/Users/poojanagabhairu/Documents/SOS-game/src/main/java/com/sosgame/controller/GameController.java
+/Users/poojanagabhairu/Documents/SOS-game/src/main/java/com/sosgame/model/Board.java
+/Users/poojanagabhairu/Documents/SOS-game/src/main/java/com/sosgame/model/Cell.java
+/Users/poojanagabhairu/Documents/SOS-game/src/main/java/com/sosgame/model/ComputerPlayer.java
+/Users/poojanagabhairu/Documents/SOS-game/src/main/java/com/sosgame/model/GameMode.java
+/Users/poojanagabhairu/Documents/SOS-game/src/main/java/com/sosgame/model/GeneralGame.java
+/Users/poojanagabhairu/Documents/SOS-game/src/main/java/com/sosgame/model/HumanPlayer.java
+/Users/poojanagabhairu/Documents/SOS-game/src/main/java/com/sosgame/model/Player.java
+/Users/poojanagabhairu/Documents/SOS-game/src/main/java/com/sosgame/model/PlayerColor.java
+/Users/poojanagabhairu/Documents/SOS-game/src/main/java/com/sosgame/model/SOSGameBase.java
+/Users/poojanagabhairu/Documents/SOS-game/src/main/java/com/sosgame/model/SOSSequence.java
+/Users/poojanagabhairu/Documents/SOS-game/src/main/java/com/sosgame/model/SimpleGame.java
+/Users/poojanagabhairu/Documents/SOS-game/src/main/java/com/sosgame/view/BoardPanel.java
+/Users/poojanagabhairu/Documents/SOS-game/src/main/java/com/sosgame/view/SOSGameGUI.java
