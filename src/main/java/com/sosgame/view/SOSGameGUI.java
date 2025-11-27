@@ -3,6 +3,7 @@ package com.sosgame.view;
 import com.sosgame.controller.GameController;
 import com.sosgame.model.ComputerPlayer;
 import com.sosgame.model.GameMode;
+import com.sosgame.model.GameRecord;
 import com.sosgame.model.HumanPlayer;
 import com.sosgame.model.Player;
 import com.sosgame.model.PlayerColor;
@@ -10,6 +11,7 @@ import com.sosgame.model.SOSSequence;
 
 import javax.swing.*;
 import java.awt.*;
+import java.io.File;
 import java.util.List;
 
 /**
@@ -35,6 +37,11 @@ public class SOSGameGUI extends JFrame {
     private JRadioButton blueComputerBtn;
     private JRadioButton redHumanBtn;
     private JRadioButton redComputerBtn;
+    
+    // Recording and replay controls
+    private JToggleButton recordBtn;
+    private JButton replayBtn;
+    private boolean recordingSaved = false;
 
     // no per-cell buttons; BoardPanel handles drawing and clicks
 
@@ -44,7 +51,7 @@ public class SOSGameGUI extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
 
-        // Register callback for game state changes (for computer moves)
+        // Register callback for game state changes (for computer moves and replay)
         controller.setOnStateChanged(this::refreshUI);
 
         add(buildTopPanel(), BorderLayout.NORTH);
@@ -83,6 +90,13 @@ public class SOSGameGUI extends JFrame {
         JButton newGameBtn = new JButton("New Game");
         newGameBtn.addActionListener(e -> startNewGameWithSettings());
         row1.add(newGameBtn);
+        
+        recordBtn = new JToggleButton("Record game");
+        row1.add(recordBtn);
+        
+        replayBtn = new JButton("Replay");
+        replayBtn.addActionListener(e -> handleReplay());
+        row1.add(replayBtn);
 
         outer.add(row1);
 
@@ -164,6 +178,9 @@ public class SOSGameGUI extends JFrame {
         GameMode mode = simpleModeBtn.isSelected() ? GameMode.SIMPLE : GameMode.GENERAL;
         
         // Read player types and create Player objects
+        boolean blueIsComputer = blueComputerBtn.isSelected();
+        boolean redIsComputer = redComputerBtn.isSelected();
+        
         Player bluePlayer;
         if (blueHumanBtn.isSelected()) {
             bluePlayer = new HumanPlayer("Blue", controller);
@@ -181,12 +198,94 @@ public class SOSGameGUI extends JFrame {
         // Set players on the controller
         controller.setPlayers(bluePlayer, redPlayer);
         
+        // Reset recording saved flag
+        recordingSaved = false;
+        
+        // Start recording if record button is selected
+        if (recordBtn.isSelected()) {
+            controller.startRecording(mode, size, blueIsComputer, redIsComputer);
+        }
+        
         // Start the game (this will trigger computer moves if first player is computer)
         controller.startNewGame(size, mode);
         
         // Update the board display
         rebuildBoard();
         refreshUI();
+    }
+    
+    /**
+     * Handle replay button click.
+     * Opens a file chooser to select a recording, loads it, and starts replay.
+     */
+    private void handleReplay() {
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Select Recording File");
+        int result = fileChooser.showOpenDialog(this);
+        
+        if (result == JFileChooser.APPROVE_OPTION) {
+            File file = fileChooser.getSelectedFile();
+            try {
+                controller.loadRecordingFromFile(file);
+                
+                // Get the loaded record to set up the game
+                GameRecord record = controller.getReplayRecord();
+                if (record == null) {
+                    JOptionPane.showMessageDialog(this, 
+                        "Failed to load recording", 
+                        "Error", 
+                        JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+                
+                // Set up players based on recording
+                Player bluePlayer = record.isBlueIsComputer() 
+                    ? new ComputerPlayer("Blue", controller)
+                    : new HumanPlayer("Blue", controller);
+                Player redPlayer = record.isRedIsComputer()
+                    ? new ComputerPlayer("Red", controller)
+                    : new HumanPlayer("Red", controller);
+                controller.setPlayers(bluePlayer, redPlayer);
+                
+                // Start a new game with the recording's settings
+                controller.startNewGame(record.getBoardSize(), record.getMode());
+                rebuildBoard();
+                
+                // Disable UI interactions during replay
+                setUIEnabled(false);
+                
+                // Start replay
+                controller.startReplay(() -> {
+                    // Replay finished - re-enable UI
+                    setUIEnabled(true);
+                    refreshUI();
+                });
+                
+            } catch (Exception e) {
+                JOptionPane.showMessageDialog(this, 
+                    "Error loading recording: " + e.getMessage(), 
+                    "Error", 
+                    JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+    
+    /**
+     * Enable or disable UI interactions.
+     * @param enabled true to enable, false to disable
+     */
+    private void setUIEnabled(boolean enabled) {
+        recordBtn.setEnabled(enabled);
+        replayBtn.setEnabled(enabled);
+        sizeSpinner.setEnabled(enabled);
+        simpleModeBtn.setEnabled(enabled);
+        generalModeBtn.setEnabled(enabled);
+        blueHumanBtn.setEnabled(enabled);
+        blueComputerBtn.setEnabled(enabled);
+        redHumanBtn.setEnabled(enabled);
+        redComputerBtn.setEnabled(enabled);
+        placeSBtn.setEnabled(enabled && !controller.isReplayMode());
+        placeOBtn.setEnabled(enabled && !controller.isReplayMode());
     }
 
     // Board drawing logic moved into standalone BoardPanel class
@@ -207,6 +306,12 @@ public class SOSGameGUI extends JFrame {
      * Call this after any move.
      */
     private void refreshUI() {
+        // Check if game ended and recording is enabled - prompt to save (only once)
+        if (controller.isGameOver() && recordBtn.isSelected() && !recordingSaved) {
+            recordingSaved = true;
+            // Save recording when game ends
+            saveRecording();
+        }
         // turn label and required letter locking
         PlayerColor p = controller.getCurrentPlayer();
         char required = controller.getRequiredLetterForCurrentPlayer();
@@ -242,6 +347,32 @@ public class SOSGameGUI extends JFrame {
         }
         boardPanel.setHighlightLines(lines);
         boardPanel.repaint();
+    }
+    
+    /**
+     * Save the current recording to a file.
+     * Opens a file chooser and saves the recording.
+     */
+    private void saveRecording() {
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Save Recording");
+        int result = fileChooser.showSaveDialog(this);
+        
+        if (result == JFileChooser.APPROVE_OPTION) {
+            File file = fileChooser.getSelectedFile();
+            try {
+                controller.saveRecordingToFile(file);
+                JOptionPane.showMessageDialog(this, 
+                    "Recording saved successfully", 
+                    "Success", 
+                    JOptionPane.INFORMATION_MESSAGE);
+            } catch (Exception e) {
+                JOptionPane.showMessageDialog(this, 
+                    "Error saving recording: " + e.getMessage(), 
+                    "Error", 
+                    JOptionPane.ERROR_MESSAGE);
+            }
+        }
     }
 
     public static void main(String[] args) {

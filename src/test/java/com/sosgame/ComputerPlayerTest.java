@@ -1,17 +1,15 @@
 package com.sosgame;
-import org.junit.Test;
 
 import static org.junit.Assert.*;
 
 import org.junit.Before;
+import org.junit.Test;
 
 import com.sosgame.controller.GameController;
 import com.sosgame.model.ComputerPlayer;
 import com.sosgame.model.GameMode;
 import com.sosgame.model.HumanPlayer;
 import com.sosgame.model.Player;
-import org.junit.Before;
-import org.junit.Test;
 
 /**
  * JUnit tests for ComputerPlayer and game logic.
@@ -197,6 +195,217 @@ public class ComputerPlayerTest {
             assertTrue("Equal scores should result in draw. Winner: " + winnerText, 
                       winnerText.contains("Draw"));
         }
+    }
+
+    /**
+     * Test 3: ComputerPlayer detects ?OS pattern when placing 'S'.
+     * Set up a board with ?OS pattern (empty, O, S) and verify computer places S at the start.
+     */
+    @Test
+    public void testComputerPlayerDetectsSOSPatternWhenPlacingS() {
+        int boardSize = 3;
+        ComputerPlayer blueComputer = new ComputerPlayer("Blue", controller);
+        HumanPlayer redHuman = new HumanPlayer("Red", controller);
+        controller.setPlayers(blueComputer, redHuman);
+        controller.startNewGame(boardSize, GameMode.SIMPLE);
+
+        // Set up ?OS pattern: empty at (0,0), O at (0,1), S at (0,2)
+        // Blue (Computer) places S at (0,2)
+        controller.tryMove(0, 2, 'S');
+        // Red places O at (0,1)
+        controller.tryMove(0, 1, 'O');
+        // Blue places S at (1,0)
+        controller.tryMove(1, 0, 'S');
+        // Red places O at (1,1) to switch turn back to Blue
+        controller.tryMove(1, 1, 'O');
+        
+        // Now it's Blue's turn (Computer) and they need to place 'S'
+        // The computer should detect the ?OS pattern at (0,0) and place S there
+        Player currentPlayer = controller.getCurrentPlayerObject();
+        assertTrue("Current player should be ComputerPlayer", currentPlayer instanceof ComputerPlayer);
+        assertEquals("Blue should be current player", "Blue", currentPlayer.getColor());
+        assertEquals("Required letter should be S", 'S', controller.getRequiredLetterForCurrentPlayer());
+        
+        // Get board state before computer move
+        char[][] boardBefore = controller.getBoardAsCharMatrix();
+        assertTrue("Cell (0,0) should be empty before computer move", boardBefore[0][0] == '\0');
+        assertTrue("Cell (0,1) should be O", boardBefore[0][1] == 'O');
+        assertTrue("Cell (0,2) should be S", boardBefore[0][2] == 'S');
+        
+        // Make the computer move
+        ComputerPlayer computer = (ComputerPlayer) currentPlayer;
+        computer.makeMove();
+        
+        // Get board state after computer move
+        char[][] boardAfter = controller.getBoardAsCharMatrix();
+        
+        // Computer should have placed S at (0,0) to complete SOS
+        assertEquals("Computer should place S at (0,0) to complete SOS", 'S', boardAfter[0][0]);
+        assertTrue("Game should be over after SOS is formed in Simple mode", controller.isGameOver());
+    }
+
+    /**
+     * Test 4: ComputerPlayer detects SO? pattern when placing 'S'.
+     * Set up a board with SO? pattern (S, O, empty) and verify computer places S at the end.
+     */
+    @Test
+    public void testComputerPlayerDetectsSOQuestionPatternWhenPlacingS() {
+        int boardSize = 3;
+        ComputerPlayer blueComputer = new ComputerPlayer("Blue", controller);
+        HumanPlayer redHuman = new HumanPlayer("Red", controller);
+        controller.setPlayers(blueComputer, redHuman);
+        controller.startNewGame(boardSize, GameMode.SIMPLE);
+
+        // Set up SO? pattern: S at (0,0), O at (0,1), empty at (0,2)
+        // Blue (Computer) places S at (0,0)
+        controller.tryMove(0, 0, 'S');
+        // Red places O at (0,1)
+        controller.tryMove(0, 1, 'O');
+        // Blue places S at (1,0)
+        controller.tryMove(1, 0, 'S');
+        // Red places O at (1,1) to switch turn back to Blue
+        controller.tryMove(1, 1, 'O');
+        
+        // Now it's Blue's turn (Computer) and they need to place 'S'
+        // The computer should detect the SO? pattern at (0,2) and place S there
+        Player currentPlayer = controller.getCurrentPlayerObject();
+        assertTrue("Current player should be ComputerPlayer", currentPlayer instanceof ComputerPlayer);
+        assertEquals("Required letter should be S", 'S', controller.getRequiredLetterForCurrentPlayer());
+        
+        // Get board state before computer move
+        char[][] boardBefore = controller.getBoardAsCharMatrix();
+        assertTrue("Cell (0,0) should be S", boardBefore[0][0] == 'S');
+        assertTrue("Cell (0,1) should be O", boardBefore[0][1] == 'O');
+        assertTrue("Cell (0,2) should be empty before computer move", boardBefore[0][2] == '\0');
+        
+        // Make the computer move
+        ComputerPlayer computer = (ComputerPlayer) currentPlayer;
+        computer.makeMove();
+        
+        // Get board state after computer move
+        char[][] boardAfter = controller.getBoardAsCharMatrix();
+        
+        // Computer should have placed S at (0,2) to complete SOS
+        assertEquals("Computer should place S at (0,2) to complete SOS", 'S', boardAfter[0][2]);
+        assertTrue("Game should be over after SOS is formed in Simple mode", controller.isGameOver());
+    }
+
+    /**
+     * Test 5: ComputerPlayer prioritizes scoring moves over random moves.
+     * Set up a board with both a scoring opportunity and other empty cells.
+     * Verify computer chooses the scoring move.
+     */
+    @Test
+    public void testComputerPlayerPrioritizesScoringMoves() {
+        int boardSize = 4;
+        HumanPlayer blueHuman = new HumanPlayer("Blue", controller);
+        ComputerPlayer redComputer = new ComputerPlayer("Red", controller);
+        controller.setPlayers(blueHuman, redComputer);
+        controller.startNewGame(boardSize, GameMode.GENERAL);
+
+        // Set up S?S pattern: S at (0,0), empty at (0,1), S at (0,2)
+        // Also fill some other cells to ensure there are multiple empty cells
+        controller.tryMove(0, 0, 'S'); // Blue
+        controller.tryMove(0, 2, 'S'); // Red (wrong letter, but we'll fix this)
+        // Actually, let's set it up correctly:
+        controller.startNewGame(boardSize, GameMode.GENERAL);
+        controller.tryMove(0, 0, 'S'); // Blue places S
+        controller.tryMove(1, 0, 'S'); // Red places S (wrong, but let's continue)
+        // Let me restart and set up correctly
+        controller.startNewGame(boardSize, GameMode.GENERAL);
+        controller.tryMove(0, 0, 'S'); // Blue
+        controller.tryMove(0, 2, 'S'); // Red (this won't work, Red must place O)
+        // Let me fix this properly:
+        controller.startNewGame(boardSize, GameMode.GENERAL);
+        controller.tryMove(0, 0, 'S'); // Blue places S
+        controller.tryMove(1, 1, 'O'); // Red places O
+        controller.tryMove(0, 2, 'S'); // Blue places S at (0,2)
+        // Now we have S at (0,0), empty at (0,1), S at (0,2) - S?S pattern
+        // It's Red's turn and they need to place 'O'
+        
+        // Get board state before computer move
+        char[][] boardBefore = controller.getBoardAsCharMatrix();
+        assertTrue("Cell (0,0) should be S", boardBefore[0][0] == 'S');
+        assertTrue("Cell (0,1) should be empty", boardBefore[0][1] == '\0');
+        assertTrue("Cell (0,2) should be S", boardBefore[0][2] == 'S');
+        
+        Player currentPlayer = controller.getCurrentPlayerObject();
+        assertTrue("Current player should be ComputerPlayer", currentPlayer instanceof ComputerPlayer);
+        assertEquals("Required letter should be O", 'O', controller.getRequiredLetterForCurrentPlayer());
+        
+        // Make the computer move
+        ComputerPlayer computer = (ComputerPlayer) currentPlayer;
+        computer.makeMove();
+        
+        // Get board state after computer move
+        char[][] boardAfter = controller.getBoardAsCharMatrix();
+        
+        // Computer should have placed O at (0,1) to complete SOS, not at a random location
+        assertEquals("Computer should place O at (0,1) to complete SOS", 'O', boardAfter[0][1]);
+        assertTrue("Red score should be 1 after completing SOS", controller.getRedScore() == 1);
+    }
+
+    /**
+     * Test 6: ComputerPlayer uses randomness when no scoring move exists.
+     * Set up a board with no scoring opportunities and verify computer picks a random empty cell.
+     */
+    @Test
+    public void testComputerPlayerUsesRandomnessWhenNoScoringMove() {
+        int boardSize = 3;
+        HumanPlayer blueHuman = new HumanPlayer("Blue", controller);
+        ComputerPlayer redComputer = new ComputerPlayer("Red", controller);
+        controller.setPlayers(blueHuman, redComputer);
+        controller.startNewGame(boardSize, GameMode.SIMPLE);
+
+        // Set up board with no scoring opportunities
+        // Place letters in a way that doesn't create any SOS patterns
+        controller.tryMove(0, 0, 'S'); // Blue
+        controller.tryMove(0, 1, 'O'); // Red
+        controller.tryMove(1, 0, 'S'); // Blue
+        
+        // Now it's Red's turn (Computer) and they need to place 'O'
+        // There are no S?S patterns, so computer should pick a random empty cell
+        Player currentPlayer = controller.getCurrentPlayerObject();
+        assertTrue("Current player should be ComputerPlayer", currentPlayer instanceof ComputerPlayer);
+        assertEquals("Required letter should be O", 'O', controller.getRequiredLetterForCurrentPlayer());
+        
+        // Get board state before computer move
+        char[][] boardBefore = controller.getBoardAsCharMatrix();
+        int emptyCellsBefore = 0;
+        for (int r = 0; r < boardSize; r++) {
+            for (int c = 0; c < boardSize; c++) {
+                if (boardBefore[r][c] == '\0') {
+                    emptyCellsBefore++;
+                }
+            }
+        }
+        assertTrue("There should be empty cells available", emptyCellsBefore > 0);
+        
+        // Make the computer move
+        ComputerPlayer computer = (ComputerPlayer) currentPlayer;
+        computer.makeMove();
+        
+        // Get board state after computer move
+        char[][] boardAfter = controller.getBoardAsCharMatrix();
+        
+        // Verify a move was made (one less empty cell)
+        int emptyCellsAfter = 0;
+        int newMoveRow = -1;
+        int newMoveCol = -1;
+        for (int r = 0; r < boardSize; r++) {
+            for (int c = 0; c < boardSize; c++) {
+                if (boardAfter[r][c] == '\0') {
+                    emptyCellsAfter++;
+                } else if (boardBefore[r][c] == '\0' && boardAfter[r][c] != '\0') {
+                    newMoveRow = r;
+                    newMoveCol = c;
+                }
+            }
+        }
+        
+        assertTrue("Computer should have placed a move", newMoveRow >= 0 && newMoveCol >= 0);
+        assertEquals("Computer should reduce empty cells by 1", emptyCellsBefore - 1, emptyCellsAfter);
+        assertEquals("Computer should place O", 'O', boardAfter[newMoveRow][newMoveCol]);
     }
 }
 

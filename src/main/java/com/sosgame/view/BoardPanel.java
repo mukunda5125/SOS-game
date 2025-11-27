@@ -154,6 +154,9 @@ public class BoardPanel extends JPanel {
     private void handleClick(MouseEvent e) {
         if (controller.isGameOver()) return;
         if (boardSize <= 0) return;
+        
+        // Ignore clicks during replay mode
+        if (controller.isReplayMode()) return;
 
         // Check if currentPlayer is a HumanPlayer
         Player currentPlayer = controller.getCurrentPlayerObject();

@@ -27,8 +27,10 @@ public class ComputerPlayer extends Player {
 
     /**
      * Makes a move by:
-     * 1. First, try to detect S?S patterns and play 'O' in the middle (if it's the computer's turn to place O)
-     * 2. Otherwise, scan for all empty cells and pick one at random
+     * 1. First, try to detect scoring opportunities:
+     *    - If placing 'O': look for S?S patterns and play 'O' in the middle
+     *    - If placing 'S': look for ?OS patterns (place S at start) or SO? patterns (place S at end)
+     * 2. If no scoring opportunity found, pick a random empty cell
      * 3. Use the required letter for the current player (enforced by game controller)
      * 4. Call tryMove() on the game controller
      */
@@ -41,11 +43,12 @@ public class ComputerPlayer extends Player {
         char requiredLetter = game.getRequiredLetterForCurrentPlayer();
         int boardSize = game.getBoardSize();
         
-        // Strategy: If we need to place 'O', look for S?S patterns to complete SOS
+        // All possible directions: vertical, horizontal, diag down-right, diag down-left
+        int[][] directions = {{1, 0}, {0, 1}, {1, 1}, {1, -1}};
+        
+        // Strategy: Look for scoring opportunities based on required letter
         if (requiredLetter == 'O') {
-            // Look for S?S patterns where ? is empty
-            int[][] directions = {{1, 0}, {0, 1}, {1, 1}, {1, -1}}; // vertical, horizontal, diag down-right, diag down-left
-            
+            // Look for S?S patterns where ? is empty - place O in the middle
             for (int r = 0; r < boardSize; r++) {
                 for (int c = 0; c < boardSize; c++) {
                     char cell = game.getCellValue(r, c);
@@ -96,9 +99,71 @@ public class ComputerPlayer extends Player {
                     }
                 }
             }
+        } else if (requiredLetter == 'S') {
+            // Look for ?OS patterns (empty, O, S) - place S at the start
+            // and SO? patterns (S, O, empty) - place S at the end
+            for (int r = 0; r < boardSize; r++) {
+                for (int c = 0; c < boardSize; c++) {
+                    char cell = game.getCellValue(r, c);
+                    
+                    // Check for ?OS pattern: empty at (r,c), O at (r+dr, c+dc), S at (r+2*dr, c+2*dc)
+                    // We need to place S at (r, c) to complete SOS
+                    if (cell == '\0') {
+                        for (int[] dir : directions) {
+                            int dr = dir[0];
+                            int dc = dir[1];
+                            
+                            int r2 = r + dr;
+                            int c2 = c + dc;
+                            int r3 = r + 2 * dr;
+                            int c3 = c + 2 * dc;
+                            
+                            if (r2 >= 0 && r2 < boardSize && c2 >= 0 && c2 < boardSize &&
+                                r3 >= 0 && r3 < boardSize && c3 >= 0 && c3 < boardSize) {
+                                char middle = game.getCellValue(r2, c2);
+                                char end = game.getCellValue(r3, c3);
+                                
+                                if (middle == 'O' && end == 'S') {
+                                    // Found ?OS pattern, place S at (r, c)
+                                    if (game.tryMove(r, c, 'S')) {
+                                        return; // Move successful
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Check for SO? pattern: S at (r-dr, c-dc), O at (r, c), empty at (r+dr, c+dc)
+                    // We need to place S at (r+dr, c+dc) to complete SOS
+                    if (cell == 'O') {
+                        for (int[] dir : directions) {
+                            int dr = dir[0];
+                            int dc = dir[1];
+                            
+                            int r1 = r - dr;
+                            int c1 = c - dc;
+                            int r2 = r + dr;
+                            int c2 = c + dc;
+                            
+                            if (r1 >= 0 && r1 < boardSize && c1 >= 0 && c1 < boardSize &&
+                                r2 >= 0 && r2 < boardSize && c2 >= 0 && c2 < boardSize) {
+                                char start = game.getCellValue(r1, c1);
+                                char end = game.getCellValue(r2, c2);
+                                
+                                if (start == 'S' && end == '\0') {
+                                    // Found SO? pattern, place S at (r2, c2)
+                                    if (game.tryMove(r2, c2, 'S')) {
+                                        return; // Move successful
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
 
-        // No S?S pattern found (or we need to place 'S'), pick a random empty cell
+        // No scoring opportunity found, pick a random empty cell
         List<int[]> emptyCells = new ArrayList<>();
 
         for (int row = 0; row < boardSize; row++) {

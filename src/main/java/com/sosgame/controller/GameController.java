@@ -3,12 +3,20 @@ package com.sosgame.controller;
 import com.sosgame.model.ComputerPlayer;
 import com.sosgame.model.GameMode;
 import com.sosgame.model.GeneralGame;
+import com.sosgame.model.GameRecord;
+import com.sosgame.model.MoveRecord;
 import com.sosgame.model.Player;
 import com.sosgame.model.PlayerColor;
 import com.sosgame.model.SimpleGame;
 import com.sosgame.model.SOSGameBase;
 import com.sosgame.model.SOSSequence;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.List;
 
 public class GameController {
@@ -24,6 +32,15 @@ public class GameController {
     
     // Callback to notify GUI when game state changes (for computer moves)
     private Runnable onStateChanged;
+    
+    // Recording and replay fields
+    private boolean recordingEnabled;
+    private GameRecord currentRecord;
+    private boolean replayMode;
+    private GameRecord replayRecord;
+    private int replayIndex;
+    private javax.swing.Timer replayTimer;
+    private Runnable onReplayFinished;
 
     /**
      * Set the blue and red players for the game.
@@ -89,8 +106,20 @@ public class GameController {
             return false; // reject wrong letter; keep state unchanged
         }
 
+        // Record the move if recording is enabled and not in replay mode
+        // We record BEFORE makeMove() so we capture the player who is making the move
+        PlayerColor movePlayer = null;
+        if (recordingEnabled && !replayMode) {
+            movePlayer = getCurrentPlayerColor(); // Player before the move
+        }
+        
         // Make the move (this handles SOS detection, score update, turn switching)
         game.makeMove(row, col, letter);
+        
+        // Record the move after it succeeds
+        if (recordingEnabled && !replayMode && movePlayer != null) {
+            recordMoveIfNeeded(row, col, letter, movePlayer);
+        }
         
         // After move is processed, handle player switching and game state
         if (!game.isGameOver()) {
@@ -299,5 +328,187 @@ public class GameController {
             }
         }
         return m;
+    }
+    
+    // ========== Recording and Replay Methods ==========
+    
+    /**
+     * Start recording a game.
+     * @param mode The game mode
+     * @param size The board size
+     * @param blueComputer Whether blue player is a computer
+     * @param redComputer Whether red player is a computer
+     */
+    public void startRecording(GameMode mode, int size, boolean blueComputer, boolean redComputer) {
+        currentRecord = new GameRecord();
+        currentRecord.setMode(mode);
+        currentRecord.setBoardSize(size);
+        currentRecord.setBlueIsComputer(blueComputer);
+        currentRecord.setRedIsComputer(redComputer);
+        recordingEnabled = true;
+    }
+    
+    /**
+     * Record a move if recording is enabled.
+     * @param row The row of the move
+     * @param col The column of the move
+     * @param letter The letter placed
+     * @param player The player who made the move
+     */
+    private void recordMoveIfNeeded(int row, int col, char letter, PlayerColor player) {
+        if (recordingEnabled && currentRecord != null) {
+            MoveRecord move = new MoveRecord(row, col, letter, player);
+            currentRecord.addMove(move);
+        }
+    }
+    
+    /**
+     * Save the current recording to a file.
+     * @param file The file to save to
+     * @throws IOException If an I/O error occurs
+     */
+    public void saveRecordingToFile(File file) throws IOException {
+        if (currentRecord == null) {
+            throw new IllegalStateException("No recording to save");
+        }
+        
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
+            // Write header line
+            String modeStr = currentRecord.getMode() == GameMode.SIMPLE ? "SIMPLE" : "GENERAL";
+            String blueStr = currentRecord.isBlueIsComputer() ? "COMPUTER" : "HUMAN";
+            String redStr = currentRecord.isRedIsComputer() ? "COMPUTER" : "HUMAN";
+            writer.write(String.format("MODE=%s;SIZE=%d;BLUE=%s;RED=%s", 
+                modeStr, currentRecord.getBoardSize(), blueStr, redStr));
+            writer.newLine();
+            
+            // Write moves
+            for (MoveRecord move : currentRecord.getMoves()) {
+                String playerStr = move.getPlayer() == PlayerColor.BLUE ? "BLUE" : "RED";
+                writer.write(String.format("%d,%d,%c,%s", 
+                    move.getRow(), move.getCol(), move.getLetter(), playerStr));
+                writer.newLine();
+            }
+        }
+    }
+    
+    /**
+     * Get the loaded replay record (for setting up the game).
+     * @return The replay record, or null if none loaded
+     */
+    public GameRecord getReplayRecord() {
+        return replayRecord;
+    }
+    
+    /**
+     * Load a recording from a file.
+     * @param file The file to load from
+     * @throws IOException If an I/O error occurs
+     */
+    public void loadRecordingFromFile(File file) throws IOException {
+        replayRecord = new GameRecord();
+        
+        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+            // Read header line
+            String header = reader.readLine();
+            if (header == null) {
+                throw new IOException("Empty file");
+            }
+            
+            // Parse header: MODE=<mode>;SIZE=<size>;BLUE=<HUMAN|COMPUTER>;RED=<HUMAN|COMPUTER>
+            String[] parts = header.split(";");
+            for (String part : parts) {
+                String[] keyValue = part.split("=");
+                if (keyValue.length != 2) continue;
+                
+                String key = keyValue[0].trim();
+                String value = keyValue[1].trim();
+                
+                switch (key) {
+                    case "MODE":
+                        replayRecord.setMode("SIMPLE".equals(value) ? GameMode.SIMPLE : GameMode.GENERAL);
+                        break;
+                    case "SIZE":
+                        replayRecord.setBoardSize(Integer.parseInt(value));
+                        break;
+                    case "BLUE":
+                        replayRecord.setBlueIsComputer("COMPUTER".equals(value));
+                        break;
+                    case "RED":
+                        replayRecord.setRedIsComputer("COMPUTER".equals(value));
+                        break;
+                }
+            }
+            
+            // Read moves
+            String line;
+            while ((line = reader.readLine()) != null) {
+                line = line.trim();
+                if (line.isEmpty()) continue;
+                
+                // Parse move: row,col,letter,playerColor
+                String[] moveParts = line.split(",");
+                if (moveParts.length != 4) continue;
+                
+                int row = Integer.parseInt(moveParts[0].trim());
+                int col = Integer.parseInt(moveParts[1].trim());
+                char letter = moveParts[2].trim().charAt(0);
+                PlayerColor player = "BLUE".equals(moveParts[3].trim()) ? PlayerColor.BLUE : PlayerColor.RED;
+                
+                MoveRecord move = new MoveRecord(row, col, letter, player);
+                replayRecord.addMove(move);
+            }
+        }
+        
+        replayIndex = 0;
+    }
+    
+    /**
+     * Check if the game is in replay mode.
+     * @return true if in replay mode, false otherwise
+     */
+    public boolean isReplayMode() {
+        return replayMode;
+    }
+    
+    /**
+     * Start replaying a loaded recording.
+     * @param onReplayFinished Callback to run when replay is finished
+     */
+    public void startReplay(Runnable onReplayFinished) {
+        if (replayRecord == null) {
+            throw new IllegalStateException("No recording loaded");
+        }
+        
+        this.onReplayFinished = onReplayFinished;
+        replayMode = true;
+        replayIndex = 0;
+        
+        // Stop any existing replay timer
+        if (replayTimer != null) {
+            replayTimer.stop();
+        }
+        
+        // Create and start replay timer
+        replayTimer = new javax.swing.Timer(1000, e -> {
+            if (replayIndex >= replayRecord.getMoves().size()) {
+                // Replay finished
+                replayTimer.stop();
+                replayMode = false;
+                if (this.onReplayFinished != null) {
+                    this.onReplayFinished.run();
+                }
+                return;
+            }
+            
+            // Apply next move
+            MoveRecord move = replayRecord.getMoves().get(replayIndex);
+            tryMove(move.getRow(), move.getCol(), move.getLetter());
+            replayIndex++;
+            
+            // Notify state change
+            notifyStateChanged();
+        });
+        
+        replayTimer.start();
     }
 }

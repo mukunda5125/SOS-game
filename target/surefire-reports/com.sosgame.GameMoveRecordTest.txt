@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
-Test set: com.sosgame.ComputerPlayerTest
+Test set: com.sosgame.GameMoveRecordTest
 -------------------------------------------------------------------------------
-Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.001 s -- in com.sosgame.ComputerPlayerTest
+Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.001 s -- in com.sosgame.GameMoveRecordTest
